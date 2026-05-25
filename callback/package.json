@@ -1,0 +1,16 @@
+{
+  "name": "callback",
+  "version": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sts": "^3.1053.0",
+    "jose": "^6.2.3"
+  }
+}

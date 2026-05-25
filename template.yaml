@@ -1,0 +1,172 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  AUTH:
+    Type: String
+    Description: Auth Endpoint URL
+    Default: 'https://lms.research.pigumer.com/moodle/mod/lti/auth.php'
+  JWKS:
+    Type: String
+    Description: Key info URL
+    Default: 'https://lms.research.pigumer.com/moodle/mod/lti/certs.php'
+  ISSUER:
+    Type: String
+    Description: ISSUER
+    Default: 'https://lms.research.pigumer.com/moodle'
+  AUDIENCE:
+    Type: String
+    Description: AUDIENCE
+
+Resources:
+  HttpApi:
+    Type: 'AWS::ApiGatewayV2::Api'
+    Properties:
+      Name: 'HttpApi'
+      ProtocolType: HTTP
+
+  HttpApiStage:
+    Type: 'AWS::ApiGatewayV2::Stage'
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  ConsoleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-ConsoleAccess"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub '${AWS::AccountId}'
+            Action:
+              - 'sts:AssumeRole'
+              - 'sts:TagSession'
+      Policies:
+        - PolicyName: 'ConsoleAccessPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:ListAllMyBuckets'
+                  - 's3:ListBucket'
+                  - 's3:GetObject'
+                Resource: '*'
+        - PolicyName: 'ABAC-Administrator-Policy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action: '*'
+                Resource: '*'
+                Condition:
+                  StringLike:
+                    'aws:PrincipalTag/Roles': '*Administrator*'
+
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: auth/
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Timeout: 10
+      Environment:
+        Variables:
+          AUTH_URL: !Ref AUTH
+          REDIRECT_URI: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/callback'
+      LoggingConfig:
+        LogGroup: !Ref AuthFunctionLogGroup
+
+  AuthFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain    
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-AuthFunction"
+      RetentionInDays: 7
+
+  AuthIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt AuthFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  AuthRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /auth'
+      Target: !Sub 'integrations/${AuthIntegration}'
+
+  AuthPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AuthFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
+
+  CallbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: callback/
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Timeout: 10
+      Environment:
+        Variables:
+          JWKS_URL: !Ref JWKS
+          ISSUER:   !Ref ISSUER
+          AUDIENCE: !Ref AUDIENCE
+          ROLE_ARN: !GetAtt ConsoleRole.Arn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - 'sts:AssumeRole'
+                - 'sts:TagSession'
+              Resource: '*'
+      LoggingConfig:
+        LogGroup: !Ref CallbackFunctionLogGroup
+
+  CallbackFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain    
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-CallbackFunction"
+      RetentionInDays: 7
+
+  CallbackIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CallbackFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  CallbackRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: 'POST /callback'
+      Target: !Sub 'integrations/${CallbackIntegration}'
+
+  CallbackPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CallbackFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*'
+
+Outputs:
+  HttpApi:
+    Description: 'HTTP API'
+    Value: !Sub 'https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/auth'
