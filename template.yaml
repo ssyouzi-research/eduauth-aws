@@ -5,22 +5,18 @@ Parameters:
   AUTH:
     Type: String
     Description: Auth Endpoint URL
-    Default: 'https://lms.research.pigumer.com/moodle/mod/lti/auth.php'
   JWKS:
     Type: String
     Description: Key info URL
-    Default: 'https://lms.research.pigumer.com/moodle/mod/lti/certs.php'
   ISSUER:
     Type: String
     Description: ISSUER
-    Default: 'https://lms.research.pigumer.com/moodle'
   AUDIENCE:
     Type: String
     Description: AUDIENCE
   DOMAIN:
     Type: String
     Description: Domain for cookie setting
-    Default: 'pigumer.com'
 
 Resources:
   HttpApi:
