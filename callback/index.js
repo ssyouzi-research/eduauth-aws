@@ -40,6 +40,7 @@ async function getCredentials(verified) {
     const roles = verified['https://purl.imsglobal.org/spec/lti/claim/roles'];
     const context = verified['https://purl.imsglobal.org/spec/lti/claim/context'];
     const email = verified.email;
+    const userId = verified.sub;
 
     const safeRoles = roles.map(url => url.replace('#', '_'));
     const command = new AssumeRoleCommand({
@@ -47,7 +48,8 @@ async function getCredentials(verified) {
         'RoleSessionName': email,
 
         'Tags': [
-            { Key: "Roles", Value: safeRoles.join(' ') }
+            { Key: "Roles", Value: safeRoles.join(' ') },
+            { Key: "UserId", Value: userId }
         ]
     });
     console.log(JSON.stringify(command));
