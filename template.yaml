@@ -17,6 +17,10 @@ Parameters:
   AUDIENCE:
     Type: String
     Description: AUDIENCE
+  DOMAIN:
+    Type: String
+    Description: Domain for cookie setting
+    Default: 'pigumer.com'
 
 Resources:
   HttpApi:
@@ -125,6 +129,7 @@ Resources:
           ISSUER:   !Ref ISSUER
           AUDIENCE: !Ref AUDIENCE
           ROLE_ARN: !GetAtt ConsoleRole.Arn
+          DOMAIN: !Ref DOMAIN
       Policies:
         - Statement:
             - Effect: Allow

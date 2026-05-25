@@ -12,6 +12,7 @@ const JWKS = createRemoteJWKSet(
 
 const issuer = process.env.ISSUER;
 const audience = process.env.AUDIENCE;
+const domain = process.env.DOMAIN;
 
 async function verifyOidcToken(token) {
     try {
@@ -93,7 +94,7 @@ export const handler = async (event) => {
         statusCode: 302,
         statusDescription: 'Found',
         headers: {
-            location: `https://signin.aws.amazon.com/federation?Action=login&Issuer=pigumer.com&Destination=${distination}&SigninToken=${signinToken}`
+            'location': `https://signin.aws.amazon.com/federation?Action=login&Issuer=${domain}&Destination=${distination}&SigninToken=${signinToken}`
         }
     };
 };
