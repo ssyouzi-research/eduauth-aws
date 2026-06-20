@@ -5,6 +5,7 @@ const client = new STSClient({
     region: process.env.AWS_REGION
 });
 
+const CONSOLE_URL = process.env.CONSOLEURL;
 const ROLE_ARN = process.env.ROLE_ARN;
 const JWKS = createRemoteJWKSet(
     new URL(process.env.JWKS_URL)
@@ -91,12 +92,14 @@ export const handler = async (event) => {
     const text = await res.text();
     console.log(text);
     const signinToken = JSON.parse(text)['SigninToken'];
-    const distination = encodeURIComponent('https://console.aws.amazon.com');
+    const distination = encodeURIComponent(CONSOLE_URL);
+    const location = `https://signin.aws.amazon.com/federation?Action=login&Issuer=${domain}&Destination=${distination}&SigninToken=${signinToken}`;
+    console.log(location);
     return {
         statusCode: 302,
         statusDescription: 'Found',
         headers: {
-            'location': `https://signin.aws.amazon.com/federation?Action=login&Issuer=${domain}&Destination=${distination}&SigninToken=${signinToken}`
+            'location': location
         }
     };
 };

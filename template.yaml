@@ -17,6 +17,10 @@ Parameters:
   DOMAIN:
     Type: String
     Description: Domain for cookie setting
+  CONSOLEURL:
+    Type: String
+    Description: Console URL for redirection after login
+    Default: 'https://console.aws.amazon.com/'
 
 Resources:
   HttpApi:
@@ -126,6 +130,7 @@ Resources:
           AUDIENCE: !Ref AUDIENCE
           ROLE_ARN: !GetAtt ConsoleRole.Arn
           DOMAIN: !Ref DOMAIN
+          CONSOLEURL: !Ref CONSOLEURL
       Policies:
         - Statement:
             - Effect: Allow
